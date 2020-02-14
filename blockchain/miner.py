@@ -1,15 +1,14 @@
 import hashlib
 import requests
-import math
+
 import sys
 
 from uuid import uuid4
 
-from timeit import default_timer
+from timeit import default_timer as timer
 
 import random
-from threading import Timer as setTimeout
-
+import math
 
 def proof_of_work(last_proof):
     """
@@ -21,18 +20,19 @@ def proof_of_work(last_proof):
     - Use the same method to generate SHA-256 hashes as the examples in class
     """
 
-    start = default_timer()
+    start = timer()
 
     print("Searching for next proof")
     proof = math.floor(random.random() * 1000000)
 
     # Hash the last proof
-    last_hash = hashlib.sha256(f"last_proof".encode()).hexdigest()
+    last_hash = hashlib.sha256(f"{last_proof}".encode()).hexdigest()
 
     while not valid_proof(last_hash, proof):
         proof += 1
 
-    print("Proof found: " + str(proof) + " in " + str(default_timer() - start))    
+
+    print("Proof found: " + str(proof) + " in " + str(timer() - start))
     return proof
 
 
@@ -50,13 +50,12 @@ def valid_proof(last_hash, proof):
     return last_hash[-6:] == new_proof[:6]
 
 
-
 if __name__ == '__main__':
     # What node are we interacting with?
     if len(sys.argv) > 1:
         node = sys.argv[1]
     else:
-        node = "https://lambda-coin.herokuapp.com/api"
+        node = "https://lambda-coin-test-1.herokuapp.com/api"
 
     coins_mined = 0
 
@@ -69,29 +68,12 @@ if __name__ == '__main__':
     if id == 'NONAME\n':
         print("ERROR: You must change your name in `my_id.txt`!")
         exit()
-    
     # Run forever until interrupted
     while True:
         # Get the last proof from the server
-        def get_last_proof():
-            r = requests.get(url=node + "/last_proof")
-            data = r.json()
-            return data.get('proof')
-
-        last_proof = get_last_proof()
-
-        def check_if_lost(proof):
-            new_r = requests.get(url=node + "/last_proof")
-            new_data = new_r.json()
-            if not new_data['proof'] == proof:
-                last_proof = new_data['proof']
-                print('Checked')
-                return
-
-        timer = setTimeout(2, check_if_lost, args=(last_proof,))
-        timer.start()
-
-        new_proof = proof_of_work(last_proof)
+        r = requests.get(url=node + "/last_proof")
+        data = r.json()
+        new_proof = proof_of_work(data.get('proof'))
 
         post_data = {"proof": new_proof,
                      "id": id}
@@ -103,5 +85,3 @@ if __name__ == '__main__':
             print("Total coins mined: " + str(coins_mined))
         else:
             print(data.get('message'))
-
-        
